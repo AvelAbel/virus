@@ -11,21 +11,36 @@ class GameActivity : AppCompatActivity() {
     private var computerScore = 1  // начальные очки компьютера
     private var playerScore = 1  // начальные очки игрока
     private val random = Random()
+    private var level = 1
 
     // функция для проверки окончания игры и отображения результатов
     private fun checkGameOver() {
-        val winner = if (playerScore > computerScore) "Игрок" else "Компьютер"
-        startActivity(Intent(this@GameActivity, MainActivity::class.java).apply {
-            putExtra("gameResult", "$winner выиграл игру!")
-        })
+        if (playerScore > computerScore) {
+            // Игрок выиграл, переходим к следующему уровню
+            val intent = Intent(this, GameActivity::class.java)
+            intent.putExtra("level", level + 1)
+            startActivity(intent)
+        } else {
+            // Компьютер выиграл, возвращаемся к главному экрану
+            val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra("record", level)
+            startActivity(intent)
+        }
+        finish()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_game)
 
+        level = intent.getIntExtra("level", 1) // получите уровень из Intent
+        val levelTextView: TextView = findViewById(R.id.level_text_view)
+        levelTextView.text = "Уровень: $level"
+
+
         val gridView: SquareGridView = findViewById(R.id.grid_view)
-        val imageAdapter = ImageAdapter(this)
+        gridView.numColumns = level + 3  // Количество столбцов зависит от уровня
+        val imageAdapter = ImageAdapter(this, level)
         gridView.adapter = imageAdapter
 
         val computerScoreTextView: TextView = findViewById(R.id.computer_score)
@@ -83,8 +98,9 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun updateCells(position: Int, imageAdapter: ImageAdapter, imageResource: Int) {
-        val row = position / 4
-        val col = position % 4
+        val gridSize = level + 3
+        val row = position / gridSize
+        val col = position % gridSize
         val directions = listOf(-1, 0, 1, 0, -1)
         val cellValue = imageAdapter.cells[position].number
 
@@ -92,8 +108,8 @@ class GameActivity : AppCompatActivity() {
             val newRow = row + directions[i]
             val newCol = col + directions[i + 1]
 
-            if (newRow in 0 until 4 && newCol in 0 until 4) {
-                val newPosition = newRow * 4 + newCol
+            if (newRow in 0 until gridSize && newCol in 0 until gridSize) {
+                val newPosition = newRow * gridSize + newCol
                 val newCell = imageAdapter.cells[newPosition]
 
                 if (newCell.image == imageResource || newCell.image == R.drawable.empty) {

@@ -14,7 +14,7 @@ data class Cell(
 )
 
 
-class ImageAdapter(private val context: Context) : BaseAdapter() {
+class ImageAdapter(private val context: Context, private val level: Int) : BaseAdapter() {
     private val emptyImage = R.drawable.empty
     private val computerImage = R.drawable.computer
     private val computerBlockedImage = R.drawable.computer_100
@@ -22,12 +22,12 @@ class ImageAdapter(private val context: Context) : BaseAdapter() {
     private val playerBlockedImage = R.drawable.player_100
     private val inflater: LayoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
 
-    var cells = MutableList(16) { Cell(emptyImage, 0) }.apply {
+    var cells = MutableList((level + 3) * (level + 3)) { Cell(emptyImage, 0) }.apply {
         this[0] = Cell(computerImage, 1)
-        this[15] = Cell(playerImage, 1)
+        this[this.size - 1] = Cell(playerImage, 1)
     }
 
-    override fun getCount(): Int = 16
+    override fun getCount(): Int = (level + 3) * (level + 3)
 
     override fun getItem(position: Int): Any? = null
 
@@ -62,13 +62,14 @@ class ImageAdapter(private val context: Context) : BaseAdapter() {
         }
 
         val layoutParams = view.layoutParams
-        layoutParams.height = parent.height / 4
+        layoutParams.height = parent.height / (level + 3) // Измените высоту в соответствии с уровнем
         view.layoutParams = layoutParams
 
         textView.text = if (cell.number > 0) cell.number.toString() else ""
 
         return view
     }
+
 
     fun hasEmptyNeighbor(position: Int): Boolean {
         val row = position / 4

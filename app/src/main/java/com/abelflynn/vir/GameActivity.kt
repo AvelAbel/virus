@@ -112,14 +112,6 @@ class GameActivity : AppCompatActivity() {
 
             // Игрок может нажимать только на свои клетки
             if (cell.image == R.drawable.player) {
-                // Проверяем, есть ли пустые ячейки и доступные ходы у игрока в начале его хода
-                var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
-                if (emptyCells == 0 || !hasPlayerAvailableMoves(imageAdapter)) {
-                    // Если нет пустых ячеек или доступных ходов у игрока, игра окончена
-                    checkGameOver(emptyCells != 0 && hasPlayerAvailableMoves(imageAdapter), "player")
-                    return@setOnItemClickListener
-                }
-
                 updateCells(position, imageAdapter, R.drawable.player)
 
                 // Суммируем значения всех ячеек игрока
@@ -127,10 +119,16 @@ class GameActivity : AppCompatActivity() {
                 playerScoreTextView.text = "Игрок: $playerScore"
 
                 // Проверяем, есть ли пустые ячейки и доступные ходы у компьютера в начале его хода
-                emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
-                if (emptyCells == 0 || !hasComputerAvailableMoves(imageAdapter)) {
-                    // Если нет пустых ячеек или доступных ходов у компьютера, игра окончена
-                    checkGameOver(emptyCells != 0 && hasComputerAvailableMoves(imageAdapter), "computer")
+                var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
+                if (emptyCells == 0) {
+                    // Если нет пустых ячеек, игра окончена
+                    // В этом случае нет смысла проверять наличие доступных ходов,
+                    // Победителя следует определить по количеству очков
+                    checkGameOver(true, currentPlayer = if (playerScore > computerScore) "computer" else "player")
+                    return@setOnItemClickListener
+                } else if (!hasComputerAvailableMoves(imageAdapter)) {
+                    // Если есть пустые ячейки, но у компьютера нет доступных ходов, игрок выигрывает
+                    checkGameOver(false, "computer")
                     return@setOnItemClickListener
                 }
 
@@ -145,10 +143,14 @@ class GameActivity : AppCompatActivity() {
 
                 // Проверяем, есть ли пустые ячейки и доступные ходы у игрока в начале его хода после хода компьютера
                 emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
-                if (emptyCells == 0 || !hasPlayerAvailableMoves(imageAdapter)) {
-                    // Если нет пустых ячеек или доступных ходов у игрока, игра окончена
-                    checkGameOver(emptyCells != 0 && hasPlayerAvailableMoves(imageAdapter), "player")
-                    return@setOnItemClickListener
+                if (emptyCells == 0) {
+                    // Если нет пустых ячеек, игра окончена
+                    // В этом случае нет смысла проверять наличие доступных ходов,
+                    // Победителя следует определить по количеству очков
+                    checkGameOver(true, currentPlayer = if (playerScore > computerScore) "computer" else "player")
+                } else if (!hasPlayerAvailableMoves(imageAdapter)) {
+                    // Если есть пустые ячейки, но у игрока нет доступных ходов, компьютер выигрывает
+                    checkGameOver(false, "player")
                 }
             }
             imageAdapter.notifyDataSetChanged()

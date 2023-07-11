@@ -1,11 +1,14 @@
 package com.abelflynn.vir
 
 import android.content.Context
+import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import java.util.Random
+import androidx.appcompat.app.AlertDialog
+
 
 class GameActivity : AppCompatActivity() {
 
@@ -15,25 +18,66 @@ class GameActivity : AppCompatActivity() {
     private var level = 1
 
     // функция для проверки окончания игры и отображения результатов
-    // функция для проверки окончания игры и отображения результатов
-    private fun checkGameOver(winner: String) {
-        if (winner == "player") {
-            // Игрок выиграл, переходим к следующему уровню
-            val intent = Intent(this, GameActivity::class.java)
-            intent.putExtra("level", level + 1)
-            startActivity(intent)
-        } else {
-            // Компьютер выиграл, возвращаемся к главному экрану
-            val intent = Intent(this, MainActivity::class.java)
-            intent.putExtra("record", level)
-            val sharedPref = getSharedPreferences("MY_PREFERENCES", Context.MODE_PRIVATE)
-            with (sharedPref.edit()) {
-                putInt("record", level)
-                apply()
+    private fun checkGameOver(movesAvailable: Boolean, currentPlayer: String) {
+        var winner: String
+        // Если ходов больше нет
+        if (!movesAvailable) {
+            winner = if (currentPlayer == "player") {
+                "computer" // Если ходы закончились у игрока, побеждает компьютер
+            } else {
+                "player" // Если ходы закончились у компьютера, побеждает игрок
             }
-            startActivity(intent)
+        } else {
+            winner = if (playerScore > computerScore) {
+                "player" // Игрок выиграл
+            } else {
+                "computer" // Компьютер выиграл
+            }
         }
-        finish()
+
+        val message = if (winner == "player") {
+            "Вы выиграли с счетом $playerScore против $computerScore"
+        } else {
+            "Вы проиграли. Счет $computerScore против $playerScore"
+        }
+
+        val intent: Intent
+        val okHandler: DialogInterface.OnClickListener
+        if (winner == "player") {
+            // Переходим к следующему уровню
+            intent = Intent(this, GameActivity::class.java)
+            intent.putExtra("level", level + 1)
+            okHandler = DialogInterface.OnClickListener { _, _ ->
+                startActivity(intent)
+                finish()
+            }
+        } else {
+            // Возвращаемся к главному экрану
+            intent = Intent(this, MainActivity::class.java)
+            val sharedPref = getSharedPreferences("MY_PREFERENCES", Context.MODE_PRIVATE)
+            val record = sharedPref.getInt("record", 1)
+            if (level > record) {
+                with (sharedPref.edit()) {
+                    putInt("record", level)
+                    apply()
+                }
+            }
+            okHandler = DialogInterface.OnClickListener { _, _ ->
+                startActivity(intent)
+                finish()
+            }
+        }
+        showGameOverDialog(message, okHandler)
+    }
+
+
+    private fun showGameOverDialog(message: String, okHandler: DialogInterface.OnClickListener) {
+        AlertDialog.Builder(this)
+            .setTitle("Игра окончена")
+            .setMessage(message)
+            .setPositiveButton("OK", okHandler)
+            .setCancelable(false)
+            .show()
     }
 
 
@@ -44,7 +88,6 @@ class GameActivity : AppCompatActivity() {
         level = intent.getIntExtra("level", 1) // получите уровень из Intent
         val levelTextView: TextView = findViewById(R.id.level_text_view)
         levelTextView.text = "Уровень: $level"
-
 
         val gridView: SquareGridView = findViewById(R.id.grid_view)
         gridView.numColumns = level + 3  // Количество столбцов зависит от уровня
@@ -69,49 +112,48 @@ class GameActivity : AppCompatActivity() {
 
             // Игрок может нажимать только на свои клетки
             if (cell.image == R.drawable.player) {
+                // Проверяем, есть ли пустые ячейки и доступные ходы у игрока в начале его хода
+                var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
+                if (emptyCells == 0 || !hasPlayerAvailableMoves(imageAdapter)) {
+                    // Если нет пустых ячеек или доступных ходов у игрока, игра окончена
+                    checkGameOver(emptyCells != 0 && hasPlayerAvailableMoves(imageAdapter), "player")
+                    return@setOnItemClickListener
+                }
+
                 updateCells(position, imageAdapter, R.drawable.player)
 
                 // Суммируем значения всех ячеек игрока
                 playerScore = imageAdapter.cells.filter { it.image == R.drawable.player }.sumBy { it.number }
                 playerScoreTextView.text = "Игрок: $playerScore"
 
-                // Проверяем, есть ли пустые ячейки
-                var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
-                if (emptyCells == 0 || !hasPlayerAvailableMoves(imageAdapter)) {
-                    // Игра окончена, нет пустых ячеек или у игрока нет доступных ходов
-                    checkGameOver("computer")
-                } else if (!hasComputerAvailableMoves(imageAdapter)) {
-                    // Компьютер не имеет доступных ходов, игрок побеждает
-                    checkGameOver("player")
-                }
-
-                // Ход компьютера
-                if (hasComputerAvailableMoves(imageAdapter)) {
-                    val availableCells = getAvailableComputerCells(imageAdapter)
-                    val computerPosition = availableCells[random.nextInt(availableCells.size)]
-                    updateCells(computerPosition, imageAdapter, R.drawable.computer)
-
-                    // Суммируем значения всех ячеек компьютера
-                    computerScore = imageAdapter.cells.filter { it.image == R.drawable.computer }.sumBy { it.number }
-                    computerScoreTextView.text = "Компьютер: $computerScore"
-                } else {
-                    // Компьютер не имеет доступных ходов, игрок побеждает
-                    checkGameOver("player")
+                // Проверяем, есть ли пустые ячейки и доступные ходы у компьютера в начале его хода
+                emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
+                if (emptyCells == 0 || !hasComputerAvailableMoves(imageAdapter)) {
+                    // Если нет пустых ячеек или доступных ходов у компьютера, игра окончена
+                    checkGameOver(emptyCells != 0 && hasComputerAvailableMoves(imageAdapter), "computer")
                     return@setOnItemClickListener
                 }
 
-                // Проверяем, есть ли пустые ячейки
+                // Ход компьютера
+                val availableCells = getAvailableComputerCells(imageAdapter)
+                val computerPosition = availableCells[random.nextInt(availableCells.size)]
+                updateCells(computerPosition, imageAdapter, R.drawable.computer)
+
+                // Суммируем значения всех ячеек компьютера
+                computerScore = imageAdapter.cells.filter { it.image == R.drawable.computer }.sumBy { it.number }
+                computerScoreTextView.text = "Компьютер: $computerScore"
+
+                // Проверяем, есть ли пустые ячейки и доступные ходы у игрока в начале его хода после хода компьютера
                 emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
-                if (emptyCells == 0) {
-                    // Игра окончена, нет пустых ячеек
-                    checkGameOver(if (playerScore > computerScore) "player" else "computer")
-                } else if (!hasPlayerAvailableMoves(imageAdapter)) {
-                    // Игрок не имеет доступных ходов, компьютер побеждает
-                    checkGameOver("computer")
+                if (emptyCells == 0 || !hasPlayerAvailableMoves(imageAdapter)) {
+                    // Если нет пустых ячеек или доступных ходов у игрока, игра окончена
+                    checkGameOver(emptyCells != 0 && hasPlayerAvailableMoves(imageAdapter), "player")
+                    return@setOnItemClickListener
                 }
             }
             imageAdapter.notifyDataSetChanged()
         }
+
     }
 
     private fun hasPlayerAvailableMoves(imageAdapter: ImageAdapter): Boolean {
@@ -147,6 +189,12 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun getAvailableComputerCells(imageAdapter: ImageAdapter): List<Int> {
-        return imageAdapter.cells.indices.filter { imageAdapter.cells[it].image == R.drawable.computer && imageAdapter.hasEmptyNeighbor(it) }
+        val availableCells = imageAdapter.cells.indices.filter { imageAdapter.cells[it].image == R.drawable.computer && imageAdapter.hasEmptyNeighbor(it) }
+        if (availableCells.isEmpty()) {
+            return availableCells
+        }
+        val maxValue = availableCells.maxOf { imageAdapter.cells[it].number }
+        return availableCells.filter { imageAdapter.cells[it].number == maxValue }
     }
 }
+

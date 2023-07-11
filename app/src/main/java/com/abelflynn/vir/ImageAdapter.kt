@@ -10,14 +10,16 @@ import android.widget.TextView
 
 data class Cell(
     var image: Int,
-    var number: Int,
-    var cooldown: Int = 0
+    var number: Int
 )
+
 
 class ImageAdapter(private val context: Context) : BaseAdapter() {
     private val emptyImage = R.drawable.empty
     private val computerImage = R.drawable.computer
+    private val computerBlockedImage = R.drawable.computer_100
     private val playerImage = R.drawable.player
+    private val playerBlockedImage = R.drawable.player_100
     private val inflater: LayoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
 
     var cells = MutableList(16) { Cell(emptyImage, 0) }.apply {
@@ -49,18 +51,14 @@ class ImageAdapter(private val context: Context) : BaseAdapter() {
         }
 
         val cell = cells[position]
-        if (cell.cooldown > 0) {
-            cell.cooldown -= 1
-            when {
-                cell.image == R.drawable.player && cell.cooldown == 3 -> imageView.setImageResource(R.drawable.player_100)
-                cell.image == R.drawable.player && cell.cooldown == 2 -> imageView.setImageResource(R.drawable.player_66)
-                cell.image == R.drawable.player && cell.cooldown == 1 -> imageView.setImageResource(R.drawable.player_33)
-                cell.image == R.drawable.computer && cell.cooldown == 3 -> imageView.setImageResource(R.drawable.computer_100)
-                cell.image == R.drawable.computer && cell.cooldown == 2 -> imageView.setImageResource(R.drawable.computer_66)
-                cell.image == R.drawable.computer && cell.cooldown == 1 -> imageView.setImageResource(R.drawable.computer_33)
-            }
-        } else {
+        if (hasEmptyNeighbor(position)) {
             imageView.setImageResource(cell.image)
+        } else {
+            when (cell.image) {
+                playerImage -> imageView.setImageResource(playerBlockedImage)
+                computerImage -> imageView.setImageResource(computerBlockedImage)
+                else -> imageView.setImageResource(cell.image)
+            }
         }
 
         val layoutParams = view.layoutParams
@@ -72,7 +70,27 @@ class ImageAdapter(private val context: Context) : BaseAdapter() {
         return view
     }
 
+    fun hasEmptyNeighbor(position: Int): Boolean {
+        val row = position / 4
+        val col = position % 4
+        val directions = listOf(-1, 0, 1, 0, -1)
 
+        for (i in 0 until 4) {
+            val newRow = row + directions[i]
+            val newCol = col + directions[i + 1]
+
+            if (newRow in 0 until 4 && newCol in 0 until 4) {
+                val newPosition = newRow * 4 + newCol
+                val newCell = cells[newPosition]
+
+                if (newCell.image == emptyImage) {
+                    return true
+                }
+            }
+        }
+
+        return false
+    }
 
     private data class ViewHolder(val image: ImageView, val text: TextView)
 }

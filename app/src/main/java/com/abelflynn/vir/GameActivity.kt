@@ -3,9 +3,9 @@ package com.abelflynn.vir
 import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import java.util.Random
+
 class GameActivity : AppCompatActivity() {
 
     private var computerScore = 1  // начальные очки компьютера
@@ -15,7 +15,9 @@ class GameActivity : AppCompatActivity() {
     // функция для проверки окончания игры и отображения результатов
     private fun checkGameOver() {
         val winner = if (playerScore > computerScore) "Игрок" else "Компьютер"
-        Toast.makeText(this@GameActivity, "$winner выиграл игру!", Toast.LENGTH_LONG).show()
+        startActivity(Intent(this@GameActivity, MainActivity::class.java).apply {
+            putExtra("gameResult", "$winner выиграл игру!")
+        })
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,8 +38,9 @@ class GameActivity : AppCompatActivity() {
         gridView.setOnItemClickListener { _, _, position, _ ->
             val cell = imageAdapter.cells[position]
 
-            if (cell.cooldown > 0) {
-                // Если на этой ячейке есть cooldown, мы не позволяем пользователю на неё нажимать
+            // Проверяем, соприкасается ли ячейка с пустой ячейкой
+            if (!imageAdapter.hasEmptyNeighbor(position)) {
+                // Если ячейка не соприкасается с пустой ячейкой, мы не позволяем пользователю на неё нажимать
                 return@setOnItemClickListener
             }
 
@@ -53,7 +56,7 @@ class GameActivity : AppCompatActivity() {
                 var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
                 if (emptyCells == 0) {
                     // Игра окончена, нет пустых ячеек
-                    startActivity(Intent(this@GameActivity, MainActivity::class.java))
+                    checkGameOver()
                     return@setOnItemClickListener
                 }
 
@@ -72,22 +75,18 @@ class GameActivity : AppCompatActivity() {
                 emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
                 if (emptyCells == 0) {
                     // Игра окончена, нет пустых ячеек
-                    startActivity(Intent(this@GameActivity, MainActivity::class.java))
+                    checkGameOver()
                 }
             }
             imageAdapter.notifyDataSetChanged()
         }
     }
 
-
     private fun updateCells(position: Int, imageAdapter: ImageAdapter, imageResource: Int) {
         val row = position / 4
         val col = position % 4
         val directions = listOf(-1, 0, 1, 0, -1)
         val cellValue = imageAdapter.cells[position].number
-
-        // Когда игрок или компьютер делают ход, мы начинаем отсчёт обратного отсчёта
-        imageAdapter.cells[position].cooldown = 4
 
         for (i in 0 until 4) {
             val newRow = row + directions[i]
@@ -106,8 +105,7 @@ class GameActivity : AppCompatActivity() {
         imageAdapter.notifyDataSetChanged() // Уведомляем адаптер об изменении данных
     }
 
-
     private fun getAvailableComputerCells(imageAdapter: ImageAdapter): List<Int> {
-        return imageAdapter.cells.indices.filter { imageAdapter.cells[it].image == R.drawable.computer }
+        return imageAdapter.cells.indices.filter { imageAdapter.cells[it].image == R.drawable.computer && imageAdapter.hasEmptyNeighbor(it) }
     }
 }

@@ -13,20 +13,17 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Получаем максимальный уровень из SharedPreferences
-        val prefs = getSharedPreferences("GamePrefs", Context.MODE_PRIVATE)
-        val maxLevel = prefs.getInt("MAX_LEVEL", 1)
+        val sharedPref = getSharedPreferences("MY_PREFERENCES", Context.MODE_PRIVATE)
+        val maxLevel = sharedPref.getInt("record", 1)
 
-        // Находим TextView для отображения максимального уровня и обновляем его текст
         val maxLevelTextView: TextView = findViewById(R.id.max_level)
         maxLevelTextView.text = "Рекорд: уровень $maxLevel"
 
         val playButton: Button = findViewById(R.id.play_button)
         playButton.setOnClickListener {
             val intent = Intent(this, GameActivity::class.java)
-            // Передаем уровень в GameActivity
-            intent.putExtra("LEVEL", 1)
             startActivity(intent)
         }
     }
 }
+

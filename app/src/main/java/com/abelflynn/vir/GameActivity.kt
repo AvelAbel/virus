@@ -1,5 +1,6 @@
 package com.abelflynn.vir
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.widget.TextView
@@ -14,8 +15,9 @@ class GameActivity : AppCompatActivity() {
     private var level = 1
 
     // функция для проверки окончания игры и отображения результатов
-    private fun checkGameOver() {
-        if (playerScore > computerScore) {
+    // функция для проверки окончания игры и отображения результатов
+    private fun checkGameOver(winner: String) {
+        if (winner == "player") {
             // Игрок выиграл, переходим к следующему уровню
             val intent = Intent(this, GameActivity::class.java)
             intent.putExtra("level", level + 1)
@@ -24,10 +26,16 @@ class GameActivity : AppCompatActivity() {
             // Компьютер выиграл, возвращаемся к главному экрану
             val intent = Intent(this, MainActivity::class.java)
             intent.putExtra("record", level)
+            val sharedPref = getSharedPreferences("MY_PREFERENCES", Context.MODE_PRIVATE)
+            with (sharedPref.edit()) {
+                putInt("record", level)
+                apply()
+            }
             startActivity(intent)
         }
         finish()
     }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -69,32 +77,49 @@ class GameActivity : AppCompatActivity() {
 
                 // Проверяем, есть ли пустые ячейки
                 var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
-                if (emptyCells == 0) {
-                    // Игра окончена, нет пустых ячеек
-                    checkGameOver()
-                    return@setOnItemClickListener
+                if (emptyCells == 0 || !hasPlayerAvailableMoves(imageAdapter)) {
+                    // Игра окончена, нет пустых ячеек или у игрока нет доступных ходов
+                    checkGameOver("computer")
+                } else if (!hasComputerAvailableMoves(imageAdapter)) {
+                    // Компьютер не имеет доступных ходов, игрок побеждает
+                    checkGameOver("player")
                 }
 
                 // Ход компьютера
-                val availableCells = getAvailableComputerCells(imageAdapter)
-                if (availableCells.isNotEmpty()) {
+                if (hasComputerAvailableMoves(imageAdapter)) {
+                    val availableCells = getAvailableComputerCells(imageAdapter)
                     val computerPosition = availableCells[random.nextInt(availableCells.size)]
                     updateCells(computerPosition, imageAdapter, R.drawable.computer)
 
                     // Суммируем значения всех ячеек компьютера
                     computerScore = imageAdapter.cells.filter { it.image == R.drawable.computer }.sumBy { it.number }
                     computerScoreTextView.text = "Компьютер: $computerScore"
+                } else {
+                    // Компьютер не имеет доступных ходов, игрок побеждает
+                    checkGameOver("player")
+                    return@setOnItemClickListener
                 }
 
                 // Проверяем, есть ли пустые ячейки
                 emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
                 if (emptyCells == 0) {
                     // Игра окончена, нет пустых ячеек
-                    checkGameOver()
+                    checkGameOver(if (playerScore > computerScore) "player" else "computer")
+                } else if (!hasPlayerAvailableMoves(imageAdapter)) {
+                    // Игрок не имеет доступных ходов, компьютер побеждает
+                    checkGameOver("computer")
                 }
             }
             imageAdapter.notifyDataSetChanged()
         }
+    }
+
+    private fun hasPlayerAvailableMoves(imageAdapter: ImageAdapter): Boolean {
+        return imageAdapter.cells.indices.any { imageAdapter.cells[it].image == R.drawable.player && imageAdapter.hasEmptyNeighbor(it) }
+    }
+
+    private fun hasComputerAvailableMoves(imageAdapter: ImageAdapter): Boolean {
+        return imageAdapter.cells.indices.any { imageAdapter.cells[it].image == R.drawable.computer && imageAdapter.hasEmptyNeighbor(it) }
     }
 
     private fun updateCells(position: Int, imageAdapter: ImageAdapter, imageResource: Int) {

@@ -51,14 +51,10 @@ class ImageAdapter(private val context: Context, private val level: Int) : BaseA
         }
 
         val cell = cells[position]
-        if (hasEmptyNeighbor(position)) {
-            imageView.setImageResource(cell.image)
+        if (cell.image == R.drawable.player || cell.image == R.drawable.computer) {
+            imageView.setImageResource(if (hasEmptyNeighbor(position)) cell.image else getBlockedCellImage(cell.image))
         } else {
-            when (cell.image) {
-                playerImage -> imageView.setImageResource(playerBlockedImage)
-                computerImage -> imageView.setImageResource(computerBlockedImage)
-                else -> imageView.setImageResource(cell.image)
-            }
+            imageView.setImageResource(cell.image)
         }
 
         val layoutParams = view.layoutParams
@@ -70,18 +66,26 @@ class ImageAdapter(private val context: Context, private val level: Int) : BaseA
         return view
     }
 
+    private fun getBlockedCellImage(originalImage: Int): Int {
+        return when (originalImage) {
+            playerImage -> playerBlockedImage
+            computerImage -> computerBlockedImage
+            else -> originalImage
+        }
+    }
 
     fun hasEmptyNeighbor(position: Int): Boolean {
-        val row = position / 4
-        val col = position % 4
+        val gridSize = level + 3
+        val row = position / gridSize
+        val col = position % gridSize
         val directions = listOf(-1, 0, 1, 0, -1)
 
         for (i in 0 until 4) {
             val newRow = row + directions[i]
             val newCol = col + directions[i + 1]
 
-            if (newRow in 0 until 4 && newCol in 0 until 4) {
-                val newPosition = newRow * 4 + newCol
+            if (newRow in 0 until gridSize && newCol in 0 until gridSize) {
+                val newPosition = newRow * gridSize + newCol
                 val newCell = cells[newPosition]
 
                 if (newCell.image == emptyImage) {
@@ -92,6 +96,7 @@ class ImageAdapter(private val context: Context, private val level: Int) : BaseA
 
         return false
     }
+
 
     private data class ViewHolder(val image: ImageView, val text: TextView)
 }

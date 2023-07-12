@@ -14,37 +14,36 @@ class GameActivity : AppCompatActivity() {
 
     private var computerScore = 1  // начальные очки компьютера
     private var playerScore = 1  // начальные очки игрока
+    private var computer2Score = 1
+    private var computer3Score = 1
     private val random = Random()
     private var level = 1
+    private lateinit var imageAdapter: ImageAdapter
+
 
     // функция для проверки окончания игры и отображения результатов
-    private fun checkGameOver(movesAvailable: Boolean, currentPlayer: String) {
-        var winner: String
-        // Если ходов больше нет
-        if (!movesAvailable) {
-            winner = if (currentPlayer == "player") {
-                "computer" // Если ходы закончились у игрока, побеждает компьютер
-            } else {
-                "player" // Если ходы закончились у компьютера, побеждает игрок
-            }
-        } else {
-            winner = if (playerScore > computerScore) {
-                "player" // Игрок выиграл
-            } else {
-                "computer" // Компьютер выиграл
-            }
+    private fun checkGameOver() {
+        val scores = listOf(playerScore, computerScore, computer2Score, computer3Score)
+        val maxScore = scores.maxOrNull() ?: 0
+        val winner = when (maxScore) {
+            playerScore -> "player"
+            computerScore -> "computer1"
+            computer2Score -> "computer2"
+            computer3Score -> "computer3"
+            else -> "draw"  // на случай ничейного результата
         }
 
-        val message = if (winner == "player") {
-            "Вы выиграли с счетом $playerScore против $computerScore"
-        } else {
-            "Вы проиграли. Счет $computerScore против $playerScore"
+        val message = when (winner) {
+            "player" -> "Вы выиграли с счетом $playerScore против $computerScore, $computer2Score, $computer3Score"
+            "computer1" -> "Robot выиграл. Счет $computerScore против $playerScore, $computer2Score, $computer3Score"
+            "computer2" -> "Terminator выиграл. Счет $computer2Score против $playerScore, $computerScore, $computer3Score"
+            "computer3" -> "Transformer выиграл. Счет $computer3Score против $playerScore, $computerScore, $computer2Score"
+            else -> "Ничья."
         }
 
         val intent: Intent
         val okHandler: DialogInterface.OnClickListener
         if (winner == "player") {
-            // Переходим к следующему уровню
             intent = Intent(this, GameActivity::class.java)
             intent.putExtra("level", level + 1)
             okHandler = DialogInterface.OnClickListener { _, _ ->
@@ -52,7 +51,6 @@ class GameActivity : AppCompatActivity() {
                 finish()
             }
         } else {
-            // Возвращаемся к главному экрану
             intent = Intent(this, MainActivity::class.java)
             val sharedPref = getSharedPreferences("MY_PREFERENCES", Context.MODE_PRIVATE)
             val record = sharedPref.getInt("record", 1)
@@ -71,6 +69,7 @@ class GameActivity : AppCompatActivity() {
     }
 
 
+
     private fun showGameOverDialog(message: String, okHandler: DialogInterface.OnClickListener) {
         AlertDialog.Builder(this)
             .setTitle("Игра окончена")
@@ -83,7 +82,11 @@ class GameActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportActionBar?.hide()
         setContentView(R.layout.activity_game)
+        val computer2ScoreTextView: TextView = findViewById(R.id.computer2_score)
+        val computer3ScoreTextView: TextView = findViewById(R.id.computer3_score)
+        imageAdapter = ImageAdapter(this, level)
 
         level = intent.getIntExtra("level", 1) // получите уровень из Intent
         val levelTextView: TextView = findViewById(R.id.level_text_view)
@@ -98,8 +101,8 @@ class GameActivity : AppCompatActivity() {
         val playerScoreTextView: TextView = findViewById(R.id.player_score)
 
         // Инициализируем начальные очки на экране
-        computerScoreTextView.text = "Компьютер: $computerScore"
-        playerScoreTextView.text = "Игрок: $playerScore"
+        computerScoreTextView.text = "Robot: $computerScore"
+        playerScoreTextView.text = "Human: $playerScore"
 
         gridView.setOnItemClickListener { _, _, position, _ ->
             val cell = imageAdapter.cells[position]
@@ -116,41 +119,54 @@ class GameActivity : AppCompatActivity() {
 
                 // Суммируем значения всех ячеек игрока
                 playerScore = imageAdapter.cells.filter { it.image == R.drawable.player }.sumBy { it.number }
-                playerScoreTextView.text = "Игрок: $playerScore"
+                playerScoreTextView.text = "Human: $playerScore"
 
                 // Проверяем, есть ли пустые ячейки и доступные ходы у компьютера в начале его хода
                 var emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
                 if (emptyCells == 0) {
-                    // Если нет пустых ячеек, игра окончена
-                    // В этом случае нет смысла проверять наличие доступных ходов,
-                    // Победителя следует определить по количеству очков
-                    checkGameOver(true, currentPlayer = if (playerScore > computerScore) "computer" else "player")
-                    return@setOnItemClickListener
-                } else if (!hasComputerAvailableMoves(imageAdapter)) {
-                    // Если есть пустые ячейки, но у компьютера нет доступных ходов, игрок выигрывает
-                    checkGameOver(false, "computer")
+                    checkGameOver()
                     return@setOnItemClickListener
                 }
 
-                // Ход компьютера
-                val availableCells = getAvailableComputerCells(imageAdapter)
-                val computerPosition = availableCells[random.nextInt(availableCells.size)]
-                updateCells(computerPosition, imageAdapter, R.drawable.computer)
+                // Ходы компьютеров
+                val availableCellsComputer1 = getAvailableComputerCells(imageAdapter, R.drawable.computer)
+                val availableCellsComputer2 = getAvailableComputerCells(imageAdapter, R.drawable.computer_2)
+                val availableCellsComputer3 = getAvailableComputerCells(imageAdapter, R.drawable.computer_3)
 
-                // Суммируем значения всех ячеек компьютера
-                computerScore = imageAdapter.cells.filter { it.image == R.drawable.computer }.sumBy { it.number }
-                computerScoreTextView.text = "Компьютер: $computerScore"
+                if (availableCellsComputer1.isNotEmpty()) {
+                    val computer1Position = availableCellsComputer1[random.nextInt(availableCellsComputer1.size)]
+                    updateCells(computer1Position, imageAdapter, R.drawable.computer)
+
+                    // Суммируем значения всех ячеек компьютера
+                    computerScore = imageAdapter.cells.filter { it.image == R.drawable.computer }.sumBy { it.number }
+                    computerScoreTextView.text = "Robot: $computerScore"
+                }
+
+                if (availableCellsComputer2.isNotEmpty()) {
+                    val computer2Position = availableCellsComputer2[random.nextInt(availableCellsComputer2.size)]
+                    updateCells(computer2Position, imageAdapter, R.drawable.computer_2)
+
+                    // Суммируем значения всех ячеек компьютера 2
+                    computer2Score = imageAdapter.cells.filter { it.image == R.drawable.computer_2 }.sumBy { it.number }
+                    computer2ScoreTextView.text = "Terminator: $computer2Score"
+                }
+
+                if (availableCellsComputer3.isNotEmpty()) {
+                    val computer3Position = availableCellsComputer3[random.nextInt(availableCellsComputer3.size)]
+                    updateCells(computer3Position, imageAdapter, R.drawable.computer_3)
+
+                    // Суммируем значения всех ячеек компьютера 3
+                    computer3Score = imageAdapter.cells.filter { it.image == R.drawable.computer_3 }.sumBy { it.number }
+                    computer3ScoreTextView.text = "Transformer: $computer3Score"
+                }
 
                 // Проверяем, есть ли пустые ячейки и доступные ходы у игрока в начале его хода после хода компьютера
                 emptyCells = imageAdapter.cells.count { it.image == R.drawable.empty }
                 if (emptyCells == 0) {
-                    // Если нет пустых ячеек, игра окончена
-                    // В этом случае нет смысла проверять наличие доступных ходов,
-                    // Победителя следует определить по количеству очков
-                    checkGameOver(true, currentPlayer = if (playerScore > computerScore) "computer" else "player")
+                    checkGameOver()
                 } else if (!hasPlayerAvailableMoves(imageAdapter)) {
                     // Если есть пустые ячейки, но у игрока нет доступных ходов, компьютер выигрывает
-                    checkGameOver(false, "player")
+                    checkGameOver()
                 }
             }
             imageAdapter.notifyDataSetChanged()
@@ -190,8 +206,8 @@ class GameActivity : AppCompatActivity() {
         imageAdapter.notifyDataSetChanged() // Уведомляем адаптер об изменении данных
     }
 
-    private fun getAvailableComputerCells(imageAdapter: ImageAdapter): List<Int> {
-        val availableCells = imageAdapter.cells.indices.filter { imageAdapter.cells[it].image == R.drawable.computer && imageAdapter.hasEmptyNeighbor(it) }
+    private fun getAvailableComputerCells(imageAdapter: ImageAdapter, imageResource: Int): List<Int> {
+        val availableCells = imageAdapter.cells.indices.filter { imageAdapter.cells[it].image == imageResource && imageAdapter.hasEmptyNeighbor(it) }
         if (availableCells.isEmpty()) {
             return availableCells
         }

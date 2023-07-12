@@ -9,7 +9,7 @@
         android:id="@+id/max_level"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
+        android:layout_centerInParent="true"
         android:textSize="24sp"
         android:padding="10dp" />
 

@@ -14,32 +14,55 @@
         android:textSize="18sp"
         android:padding="10dp" />
 
-
     <TextView
         android:id="@+id/computer_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/level"
+        android:layout_below="@+id/level_text_view"
         android:layout_alignParentStart="true"
-        android:text="Компьютер: 0"
+        android:text="Robot: 0"
         android:textSize="18sp"
-        android:padding="10dp" />
+        android:padding="10dp"
+        android:textColor="@android:color/holo_red_light" />
+
+    <TextView
+        android:id="@+id/computer2_score"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/computer_score"
+        android:layout_alignParentStart="true"
+        android:text="Terminator: 0"
+        android:textSize="18sp"
+        android:padding="10dp"
+        android:textColor="@android:color/holo_orange_light" />
+
+    <TextView
+        android:id="@+id/computer3_score"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/player_score"
+        android:layout_alignParentEnd="true"
+        android:text="Transformer: 0"
+        android:textSize="18sp"
+        android:padding="10dp"
+        android:textColor="@android:color/holo_green_light" />
 
     <TextView
         android:id="@+id/player_score"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@+id/level"
+        android:layout_below="@+id/level_text_view"
         android:layout_alignParentEnd="true"
-        android:text="Игрок: 0"
+        android:text="Human: 0"
         android:textSize="18sp"
-        android:padding="10dp" />
+        android:padding="10dp"
+        android:textColor="@android:color/holo_blue_light" />
 
     <com.abelflynn.vir.SquareGridView
         android:id="@+id/grid_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/computer_score"
+        android:layout_below="@+id/computer3_score"
         android:columnWidth="90dp"
         android:gravity="center"
         android:horizontalSpacing="0dp"
